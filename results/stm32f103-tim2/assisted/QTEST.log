@@ -1,0 +1,18 @@
+Command:
+QTEST_QEMU_BINARY="$PWD/build-stm32/qemu-system-arm" \
+  build-stm32/tests/qtest/stm32f103-timer-test
+
+TAP version 13
+1..9
+ok 1 /arm/stm32f103/tim2/reset
+ok 2 /arm/stm32f103/tim2/update-irq
+ok 3 /arm/stm32f103/tim2/enable-disable
+ok 4 /arm/stm32f103/tim2/output-compare
+ok 5 /arm/stm32f103/tim2/prescaler-preload
+ok 6 /arm/stm32f103/tim2/update-disable
+ok 7 /arm/stm32f103/tim2/update-request-source
+ok 8 /arm/stm32f103/tim2/one-pulse
+ok 9 /arm/stm32f103/tim2/auto-reload-preload
+
+Result: 9/9 PASS
+

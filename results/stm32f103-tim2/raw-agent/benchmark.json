@@ -1,0 +1,215 @@
+{
+  "benchmark": "stm32f103-tim2-agent",
+  "version": 2,
+  "score": 77,
+  "possible": 100,
+  "threshold": 80,
+  "passed": false,
+  "categories": {
+    "QEMU structure": {
+      "earned": 13,
+      "possible": 13
+    },
+    "Registers": {
+      "earned": 16,
+      "possible": 16
+    },
+    "Timing behavior": {
+      "earned": 12,
+      "possible": 12
+    },
+    "Update control": {
+      "earned": 16,
+      "possible": 16
+    },
+    "Interrupts": {
+      "earned": 6,
+      "possible": 11
+    },
+    "Output compare": {
+      "earned": 0,
+      "possible": 7
+    },
+    "Validation": {
+      "earned": 8,
+      "possible": 19
+    },
+    "Traceability": {
+      "earned": 6,
+      "possible": 6
+    }
+  },
+  "checks": [
+    {
+      "id": "complete-device",
+      "category": "QEMU structure",
+      "description": "complete SysBus/QOM device with MMIO and a QEMU virtual timer",
+      "passed": true,
+      "points": 7,
+      "possible": 7,
+      "detail": "ok"
+    },
+    {
+      "id": "register-map",
+      "category": "Registers",
+      "description": "all task register offsets are decoded",
+      "passed": true,
+      "points": 6,
+      "possible": 6,
+      "detail": "ok"
+    },
+    {
+      "id": "mmio-safety",
+      "category": "Registers",
+      "description": "little-endian constrained accesses and guest-error logging",
+      "passed": true,
+      "points": 4,
+      "possible": 4,
+      "detail": "ok"
+    },
+    {
+      "id": "reset",
+      "category": "Registers",
+      "description": "reset restores ARR=0xffff, deletes pending timer and lowers IRQ",
+      "passed": true,
+      "points": 6,
+      "possible": 6,
+      "detail": "ok"
+    },
+    {
+      "id": "counter-time",
+      "category": "Timing behavior",
+      "description": "counter derives elapsed ticks from virtual time with PSC+1 and ARR+1",
+      "passed": true,
+      "points": 8,
+      "possible": 8,
+      "detail": "ok"
+    },
+    {
+      "id": "round-up",
+      "category": "Timing behavior",
+      "description": "deadline conversion rounds up without integer tick truncation",
+      "passed": true,
+      "points": 4,
+      "possible": 4,
+      "detail": "ok"
+    },
+    {
+      "id": "cen-udis",
+      "category": "Update control",
+      "description": "CEN pauses/resumes and UDIS suppresses update effects",
+      "passed": true,
+      "points": 5,
+      "possible": 5,
+      "detail": "ok"
+    },
+    {
+      "id": "urs",
+      "category": "Update control",
+      "description": "URS suppresses UIF for software UG but not overflow",
+      "passed": true,
+      "points": 4,
+      "possible": 4,
+      "detail": "ok"
+    },
+    {
+      "id": "opm-arpe-preload",
+      "category": "Update control",
+      "description": "OPM, ARR preload and PSC preload have active shadow state",
+      "passed": true,
+      "points": 7,
+      "possible": 7,
+      "detail": "ok"
+    },
+    {
+      "id": "irq-gating",
+      "category": "Interrupts",
+      "description": "level IRQ is the intersection of SR and DIER flags",
+      "passed": true,
+      "points": 6,
+      "possible": 6,
+      "detail": "ok"
+    },
+    {
+      "id": "rc-w0",
+      "category": "Interrupts",
+      "description": "SR implements rc_w0 and immediately recomputes IRQ",
+      "passed": false,
+      "points": 0,
+      "possible": 5,
+      "detail": "required patterns not all present"
+    },
+    {
+      "id": "compare",
+      "category": "Output compare",
+      "description": "four output channels use the correct CCMR half and repeat per period",
+      "passed": false,
+      "points": 0,
+      "possible": 7,
+      "detail": "required patterns not all present"
+    },
+    {
+      "id": "migration",
+      "category": "QEMU structure",
+      "description": "migration latches count then restores IRQ and deadline",
+      "passed": true,
+      "points": 6,
+      "possible": 6,
+      "detail": "ok"
+    },
+    {
+      "id": "qtest-machine",
+      "category": "Validation",
+      "description": "qtest instantiates stm32f103 and intercepts the NVIC input",
+      "passed": true,
+      "points": 4,
+      "possible": 4,
+      "detail": "ok"
+    },
+    {
+      "id": "qtest-timing",
+      "category": "Validation",
+      "description": "qtest covers reset and both sides of a timing boundary",
+      "passed": false,
+      "points": 0,
+      "possible": 6,
+      "detail": "required patterns not all present"
+    },
+    {
+      "id": "qtest-irq-compare",
+      "category": "Validation",
+      "description": "qtest covers IRQ assertion/clearing and output compare",
+      "passed": false,
+      "points": 0,
+      "possible": 5,
+      "detail": "required patterns not all present"
+    },
+    {
+      "id": "qtest-controls",
+      "category": "Validation",
+      "description": "qtest covers prescaler preload, ARPE and one-pulse",
+      "passed": true,
+      "points": 4,
+      "possible": 4,
+      "detail": "ok"
+    },
+    {
+      "id": "manifest",
+      "category": "Traceability",
+      "description": "machine-readable facts and scope follow the task schema",
+      "passed": true,
+      "points": 3,
+      "possible": 3,
+      "detail": "ok"
+    },
+    {
+      "id": "report",
+      "category": "Traceability",
+      "description": "report records sources, assumptions, validation and limitations",
+      "passed": true,
+      "points": 3,
+      "possible": 3,
+      "detail": "ok"
+    }
+  ]
+}

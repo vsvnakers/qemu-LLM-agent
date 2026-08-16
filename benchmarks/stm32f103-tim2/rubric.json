@@ -1,0 +1,128 @@
+{
+  "name": "stm32f103-tim2-agent",
+  "version": 2,
+  "threshold": 80,
+  "checks": [
+    {
+      "id": "complete-device", "category": "QEMU structure", "points": 7,
+      "description": "complete SysBus/QOM device with MMIO and a QEMU virtual timer",
+      "path": "hw/timer/stm32f1xx_timer.c", "min_lines": 220,
+      "all": ["TYPE_SYS_BUS_DEVICE", "memory_region_init_io", "sysbus_init_irq", "timer_new_ns\\s*\\(\\s*QEMU_CLOCK_VIRTUAL", "type_register_static"]
+    },
+    {
+      "id": "register-map", "category": "Registers", "points": 6,
+      "description": "all task register offsets are decoded",
+      "paths": ["hw/timer/stm32f1xx_timer.c", "include/hw/timer/stm32f1xx_timer.h"],
+      "all": ["CR1\\s+0x00", "DIER\\s+0x0[cC]", "SR\\s+0x10", "EGR\\s+0x14", "CNT\\s+0x24", "PSC\\s+0x28", "ARR\\s+0x2[cC]", "CCR1\\s+0x34", "CCR4\\s+0x40", "DMAR\\s+0x4[cC]"]
+    },
+    {
+      "id": "mmio-safety", "category": "Registers", "points": 4,
+      "description": "little-endian constrained accesses and guest-error logging",
+      "path": "hw/timer/stm32f1xx_timer.c",
+      "all": ["DEVICE_LITTLE_ENDIAN", "min_access_size", "max_access_size", "LOG_GUEST_ERROR"]
+    },
+    {
+      "id": "reset", "category": "Registers", "points": 6,
+      "description": "reset restores ARR=0xffff, deletes pending timer and lowers IRQ",
+      "path": "hw/timer/stm32f1xx_timer.c",
+      "all": ["reset", "0x[fF]{4}", "timer_del", "qemu_set_irq\\s*\\([^,]+,\\s*0\\s*\\)"]
+    },
+    {
+      "id": "counter-time", "category": "Timing behavior", "points": 8,
+      "description": "counter derives elapsed ticks from virtual time with PSC+1 and ARR+1",
+      "path": "hw/timer/stm32f1xx_timer.c",
+      "all": ["qemu_clock_get_ns\\s*\\(\\s*QEMU_CLOCK_VIRTUAL", "(?:active_psc|psc_active)\\s*\\+\\s*1", "(?:active_arr|arr_active)\\s*\\+\\s*1", "muldiv64", "timer_mod"]
+    },
+    {
+      "id": "round-up", "category": "Timing behavior", "points": 4,
+      "description": "deadline conversion rounds up without integer tick truncation",
+      "path": "hw/timer/stm32f1xx_timer.c",
+      "any": ["muldiv64_round_up", "DIV_ROUND_UP"]
+    },
+    {
+      "id": "cen-udis", "category": "Update control", "points": 5,
+      "description": "CEN pauses/resumes and UDIS suppresses update effects",
+      "path": "hw/timer/stm32f1xx_timer.c",
+      "all": ["(?:CR1_CEN|CEN)", "(?:CR1_UDIS|udis)", "timer_del"]
+    },
+    {
+      "id": "urs", "category": "Update control", "points": 4,
+      "description": "URS suppresses UIF for software UG but not overflow",
+      "path": "hw/timer/stm32f1xx_timer.c",
+      "all": ["CR1_URS", "EGR_UG"],
+      "any": ["from_overflow", "set_uif"]
+    },
+    {
+      "id": "opm-arpe-preload", "category": "Update control", "points": 7,
+      "description": "OPM, ARR preload and PSC preload have active shadow state",
+      "path": "hw/timer/stm32f1xx_timer.c",
+      "all": ["(?:CR1_OPM|opm)", "(?:CR1_ARPE|ARPE)", "(?:active_psc|psc_active)", "(?:active_arr|arr_active)"]
+    },
+    {
+      "id": "irq-gating", "category": "Interrupts", "points": 6,
+      "description": "level IRQ is the intersection of SR and DIER flags",
+      "path": "hw/timer/stm32f1xx_timer.c",
+      "all": ["s->(?:tim_)?sr\\s*&\\s*s->(?:tim_)?dier", "qemu_set_irq"]
+    },
+    {
+      "id": "rc-w0", "category": "Interrupts", "points": 5,
+      "description": "SR implements rc_w0 and immediately recomputes IRQ",
+      "path": "hw/timer/stm32f1xx_timer.c",
+      "all": ["case\\s+(?:TIM_SR|0x10)", "s->(?:tim_)?sr\\s*&=\\s*(?:value|val)\\s*&", "update_irq"]
+    },
+    {
+      "id": "compare", "category": "Output compare", "points": 7,
+      "description": "four output channels use the correct CCMR half and repeat per period",
+      "paths": ["hw/timer/stm32f1xx_timer.c", "include/hw/timer/stm32f1xx_timer.h"],
+      "all": ["TIM_SR_CC1IF", "TIM_SR_CC4IF", "(?:tim_)?ccr\\s*\\[\\s*4\\s*\\]", "TIM_CCMR1", "TIM_CCMR2", "channel\\s*<\\s*2"]
+    },
+    {
+      "id": "migration", "category": "QEMU structure", "points": 6,
+      "description": "migration latches count then restores IRQ and deadline",
+      "path": "hw/timer/stm32f1xx_timer.c",
+      "all": ["VMStateDescription", "pre_save", "post_load", "VMSTATE_", "update_irq", "(?:set_alarm|rearm)"]
+    },
+    {
+      "id": "qtest-machine", "category": "Validation", "points": 4,
+      "description": "qtest instantiates stm32f103 and intercepts the NVIC input",
+      "path": "tests/qtest/stm32f103-timer-test.c",
+      "all": ["(?:qtest_start|qtest_init)\\s*\\([^;]*stm32f103", "irq_intercept", "armv7m"]
+    },
+    {
+      "id": "qtest-timing", "category": "Validation", "points": 6,
+      "description": "qtest covers reset and both sides of a timing boundary",
+      "path": "tests/qtest/stm32f103-timer-test.c", "min_lines": 140,
+      "all": ["reset", "clock_step", "TIM2_CLOCK", "period_ns\\s*-\\s*1"]
+    },
+    {
+      "id": "qtest-irq-compare", "category": "Validation", "points": 5,
+      "description": "qtest covers IRQ assertion/clearing and output compare",
+      "path": "tests/qtest/stm32f103-timer-test.c",
+      "all": ["get_irq", "compare", "CC2IF", "CC2IE", "(?:qtest_writel|tim2_writel)\\s*\\([^;]*TIM(?:2)?_SR\\s*,\\s*0\\s*\\)"]
+    },
+    {
+      "id": "qtest-controls", "category": "Validation", "points": 4,
+      "description": "qtest covers prescaler preload, ARPE and one-pulse",
+      "path": "tests/qtest/stm32f103-timer-test.c",
+      "all": ["prescaler", "(?:auto.reload|preload)", "(?:one.pulse|opm)"]
+    },
+    {
+      "id": "manifest", "category": "Traceability", "points": 3,
+      "description": "machine-readable facts and scope follow the task schema",
+      "path": "model-manifest.json",
+      "json": [
+        {"path": "peripheral", "equals": "TIM2"},
+        {"path": "base_address", "equals": "0x40000000"},
+        {"path": "irq", "equals": 28},
+        {"path": "clock_hz", "equals": 72000000}
+      ],
+      "all": ["limitations", "registers", "behaviors"]
+    },
+    {
+      "id": "report", "category": "Traceability", "points": 3,
+      "description": "report records sources, assumptions, validation and limitations",
+      "path": "REPORT.md", "min_lines": 18,
+      "all": ["(?i)source", "(?i)assumption", "(?i)validation", "(?i)limitation", "(?i)not actually|not (?:yet )?(?:been )?compiled|not (?:yet )?(?:been )?run"]
+    }
+  ]
+}

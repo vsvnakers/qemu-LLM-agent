@@ -1,0 +1,62 @@
+{
+  "started_at": "2026-08-16T18:02:05.701264+00:00",
+  "finished_at": "2026-08-16T18:02:53.147457+00:00",
+  "task": "stm32f103-tim2",
+  "input_sha256": "43167d53f02ac70c46a700246bc7a69d5318bd3df3222d2300768b101e8871f8",
+  "model_requested": "deepseek-v4-flash",
+  "strategy": "staged",
+  "api_base": "https://api.deepseek.com",
+  "plan_api": {
+    "reused_from": "/mnt/d/qemu/project/agent-STM32F103-qemu/qemu-LLM-agent/runs/stm32f103-tim2/deepseek-v4-flash/plan.json"
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "strategy": "staged",
+      "api": [
+        {
+          "stage": "repair-model",
+          "id": "887998f8-dd0c-4a6c-9e7b-04c6a51510bb",
+          "model": "deepseek-v4-flash",
+          "finish_reason": "stop",
+          "usage": {
+            "prompt_tokens": 8008,
+            "completion_tokens": 6635,
+            "total_tokens": 14643,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 8008
+          }
+        },
+        {
+          "stage": "repair-qtest",
+          "id": "07cb6608-d7c5-4be3-81bc-ace50babd27e",
+          "model": "deepseek-v4-flash",
+          "finish_reason": "stop",
+          "usage": {
+            "prompt_tokens": 11225,
+            "completion_tokens": 3602,
+            "total_tokens": 14827,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 11225
+          }
+        }
+      ],
+      "score": 74,
+      "failed_checks": [
+        "rc-w0",
+        "compare",
+        "qtest-timing",
+        "qtest-irq-compare",
+        "report"
+      ]
+    }
+  ],
+  "final_score": 74,
+  "passed": false
+}

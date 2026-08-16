@@ -1,0 +1,338 @@
+{
+  "requirements": [
+    "Implement a minimal QEMU SysBus model for STM32F103 TIM2 at base 0x40000000.",
+    "Use virtual time (QEMU timer) rather than host threads or wall clock.",
+    "Support 16-bit upcounter, update events, and four output-compare channels.",
+    "Implement registers: CR1, CR2, SMCR, DIER, SR, EGR, CCMR1, CCMR2, CCER, CNT, PSC, ARR, CCR1-4, DCR, DMAR.",
+    "Implement reset values as specified in reference.md.",
+    "Implement counting behavior: starts with CEN, pauses when CEN cleared, tick period = (PSC_active + 1) / 72 MHz.",
+    "Implement overflow after ARR_active + 1 ticks, reset CNT to zero, set UIF unless updates disabled.",
+    "Implement PSC buffering: UG or overflow transfers PSC preload to active divider.",
+    "Implement ARR buffering: immediate when ARPE=0, transferred on update when ARPE=1.",
+    "Implement UG behavior: resets CNT, transfers preloads, sets UIF unless URS or UDIS.",
+    "Implement UDIS suppression of update-event effects including preload transfer.",
+    "Implement URS: prevents software UG from setting UIF but does not block preload transfer.",
+    "Implement OPM: clears CEN after next update.",
+    "Implement output-compare match: sets CCxIF on match, repeats each period, CCR > active ARR never matches.",
+    "Implement CCxG writes: set corresponding CCxIF flag.",
+    "Implement interrupt output: level-sensitive, asserted when any enabled flag is set, cleared immediately when no enabled flag remains.",
+    "Implement rc_w0 semantics for SR: writing 0 clears bits that were observed (i.e., write 1 to clear? Actually reference says rc_w0: clear only flags observed; driver writes ~pending, so writing 0 to bits clears them).",
+    "Implement little-endian MMIO for 32-bit aligned accesses; unsupported accesses should log guest errors.",
+    "Ensure deterministic reset state, interrupt level, pending virtual timer, and register/preload state.",
+    "Provide qtest suite proving timing boundaries and interrupt clearing.",
+    "Provide machine-readable manifest and report.",
+    "Follow QEMU conventions and keep implementation small."
+  ],
+  "register_model": [
+    {
+      "name": "CR1",
+      "offset": "0x00",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "fields": {
+        "CEN": {
+          "bit": 0,
+          "description": "Counter enable"
+        },
+        "UDIS": {
+          "bit": 1,
+          "description": "Update disable"
+        },
+        "URS": {
+          "bit": 2,
+          "description": "Update request source"
+        },
+        "OPM": {
+          "bit": 3,
+          "description": "One-pulse mode"
+        },
+        "ARPE": {
+          "bit": 7,
+          "description": "Auto-reload preload enable"
+        }
+      }
+    },
+    {
+      "name": "CR2",
+      "offset": "0x04",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "description": "Stored only in this task"
+    },
+    {
+      "name": "SMCR",
+      "offset": "0x08",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "description": "Stored only in this task"
+    },
+    {
+      "name": "DIER",
+      "offset": "0x0c",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "fields": {
+        "UIE": {
+          "bit": 0,
+          "description": "Update interrupt enable"
+        },
+        "CC1IE": {
+          "bit": 1,
+          "description": "Capture/compare 1 interrupt enable"
+        },
+        "CC2IE": {
+          "bit": 2,
+          "description": "Capture/compare 2 interrupt enable"
+        },
+        "CC3IE": {
+          "bit": 3,
+          "description": "Capture/compare 3 interrupt enable"
+        },
+        "CC4IE": {
+          "bit": 4,
+          "description": "Capture/compare 4 interrupt enable"
+        }
+      }
+    },
+    {
+      "name": "SR",
+      "offset": "0x10",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write (rc_w0)",
+      "fields": {
+        "UIF": {
+          "bit": 0,
+          "description": "Update interrupt flag"
+        },
+        "CC1IF": {
+          "bit": 1,
+          "description": "Capture/compare 1 interrupt flag"
+        },
+        "CC2IF": {
+          "bit": 2,
+          "description": "Capture/compare 2 interrupt flag"
+        },
+        "CC3IF": {
+          "bit": 3,
+          "description": "Capture/compare 3 interrupt flag"
+        },
+        "CC4IF": {
+          "bit": 4,
+          "description": "Capture/compare 4 interrupt flag"
+        }
+      },
+      "note": "Writing 0 to a flag clears it; writing 1 leaves it unchanged."
+    },
+    {
+      "name": "EGR",
+      "offset": "0x14",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "write-only",
+      "fields": {
+        "UG": {
+          "bit": 0,
+          "description": "Update generation"
+        },
+        "CC1G": {
+          "bit": 1,
+          "description": "Capture/compare 1 generation"
+        },
+        "CC2G": {
+          "bit": 2,
+          "description": "Capture/compare 2 generation"
+        },
+        "CC3G": {
+          "bit": 3,
+          "description": "Capture/compare 3 generation"
+        },
+        "CC4G": {
+          "bit": 4,
+          "description": "Capture/compare 4 generation"
+        }
+      }
+    },
+    {
+      "name": "CCMR1",
+      "offset": "0x18",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "fields": {
+        "CC1S": {
+          "bits": "1:0",
+          "description": "Capture/compare 1 selection; zero means output"
+        },
+        "CC2S": {
+          "bits": "9:8",
+          "description": "Capture/compare 2 selection; zero means output"
+        }
+      }
+    },
+    {
+      "name": "CCMR2",
+      "offset": "0x1c",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "fields": {
+        "CC3S": {
+          "bits": "1:0",
+          "description": "Capture/compare 3 selection; zero means output"
+        },
+        "CC4S": {
+          "bits": "9:8",
+          "description": "Capture/compare 4 selection; zero means output"
+        }
+      }
+    },
+    {
+      "name": "CCER",
+      "offset": "0x20",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "description": "Stored only in this task"
+    },
+    {
+      "name": "CNT",
+      "offset": "0x24",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "description": "Current counter value"
+    },
+    {
+      "name": "PSC",
+      "offset": "0x28",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "description": "Prescaler preload; divide by PSC + 1"
+    },
+    {
+      "name": "ARR",
+      "offset": "0x2c",
+      "reset": "0xffff",
+      "size": 16,
+      "access": "read-write",
+      "description": "Auto-reload preload"
+    },
+    {
+      "name": "CCR1",
+      "offset": "0x34",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "description": "Compare value for channel 1"
+    },
+    {
+      "name": "CCR2",
+      "offset": "0x38",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "description": "Compare value for channel 2"
+    },
+    {
+      "name": "CCR3",
+      "offset": "0x3c",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "description": "Compare value for channel 3"
+    },
+    {
+      "name": "CCR4",
+      "offset": "0x40",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "description": "Compare value for channel 4"
+    },
+    {
+      "name": "DCR",
+      "offset": "0x48",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "description": "Stored only in this task"
+    },
+    {
+      "name": "DMAR",
+      "offset": "0x4c",
+      "reset": "0x0000",
+      "size": 16,
+      "access": "read-write",
+      "description": "Stored only in this task"
+    }
+  ],
+  "behavior_model": [
+    "Maintain internal state: active PSC, active ARR, current CNT, pending timer, interrupt level.",
+    "Use QEMU timer to schedule next event (overflow or compare match) based on current active PSC and ARR.",
+    "When CEN is set, start counting from current CNT; schedule next event at earliest of overflow and compare matches.",
+    "When CEN is cleared, stop timer and cancel pending timer; preserve CNT and active state.",
+    "On timer expiry, advance CNT to the event count, set appropriate flags (UIF or CCxIF), then schedule next event.",
+    "Overflow: when CNT reaches ARR_active, set CNT to 0, set UIF (unless UDIS), transfer PSC and ARR preloads (unless UDIS), and if OPM set, clear CEN.",
+    "Compare match: when CNT equals CCRx and channel is output-configured (CCxS==0), set CCxIF.",
+    "UG write: reset CNT to 0, transfer PSC and ARR preloads (unless UDIS), set UIF unless URS or UDIS, and reschedule timer.",
+    "CCxG write: set corresponding CCxIF flag.",
+    "SR write: for each bit written 0, clear that flag; bits written 1 are unchanged.",
+    "Interrupt output: assert if (SR & DIER & 0x1F) != 0; deassert otherwise.",
+    "When DIER or SR changes, update interrupt output.",
+    "When PSC is written, store preload; active PSC updates on UG or overflow (unless UDIS).",
+    "When ARR is written, if ARPE=0, update active ARR immediately and reschedule; if ARPE=1, store preload and update on update event.",
+    "When CNT is written, update current count and reschedule.",
+    "When CCRx is written, update compare value and reschedule.",
+    "Reset: clear all registers to reset values, cancel timer, deassert IRQ.",
+    "Unsupported accesses (e.g., non-32-bit, out-of-window) should log guest error and be safe.",
+    "All timing calculations use virtual time; round up next deadline so interrupt is not observed before hardware tick."
+  ],
+  "tests": [
+    "Reset test: after reset, all registers have reset values, IRQ deasserted, no pending timer.",
+    "Basic counting test: set PSC=71, ARR=999, CEN=1; after 1000 ticks (at 72MHz, 1000/1MHz = 1ms), CNT should be 0 and UIF set.",
+    "Timing boundary test: at 999 ticks, CNT should be 999 and UIF not set; at 1000 ticks, overflow occurs.",
+    "Prescaler test: with PSC=71, tick period is 1us; verify CNT increments at correct virtual time.",
+    "Compare match test: set CCR2=250, ARR=999; at 250 ticks, CC2IF set; at 999 ticks, UIF set.",
+    "Interrupt clearing test: set DIER with UIE and CC2IE, trigger both flags, assert IRQ; write SR=0 (clear all), assert IRQ deasserted.",
+    "UG test: write UG, verify CNT resets to 0, UIF set (unless URS), and PSC/ARR preloads transferred.",
+    "UDIS test: set UDIS, trigger overflow, verify UIF not set and preloads not transferred.",
+    "URS test: set URS, write UG, verify UIF not set but preloads transferred.",
+    "OPM test: set OPM, trigger overflow, verify CEN cleared.",
+    "ARPE test: with ARPE=0, write ARR, verify active ARR changes immediately; with ARPE=1, write ARR, verify active ARR changes only on update.",
+    "CCxG test: write CC2G, verify CC2IF set.",
+    "CCR > ARR test: set CCR2 > ARR, run timer, verify no CC2IF set.",
+    "CEN pause test: start timer, clear CEN, advance time, verify CNT unchanged and no flags set.",
+    "MMIO access test: read/write all registers, verify values; attempt unsupported access and verify guest error logged.",
+    "IRQ level test: assert IRQ when enabled flag set, deassert when cleared."
+  ],
+  "assumptions": [
+    "The timer input clock is fixed at 72 MHz; no RCC clock tree modeling.",
+    "Registers are 16-bit in effect but accessed via 32-bit MMIO; we will store 16-bit values and mask writes to 16 bits.",
+    "Only output-compare mode is modeled; input capture and PWM output are out of scope.",
+    "CCxS bits are assumed to be zero (output mode) for compare match behavior; if non-zero, channel is not modeled for capture.",
+    "The driver's SR write pattern (write ~pending) implies rc_w0 semantics: writing 0 clears flags, writing 1 leaves unchanged.",
+    "The interrupt output is a single line connected to NVIC IRQ 28; we model it as a GPIO out.",
+    "The device is memory-mapped at 0x40000000 with a 0x400 byte window.",
+    "Unsupported registers (CR2, SMCR, CCER, DCR, DMAR) are stored but have no functional effect.",
+    "The timer should use QEMU virtual time and a single QEMU timer for scheduling.",
+    "The next deadline should be rounded up to avoid early interrupts.",
+    "The model should be deterministic across migration; we will store necessary state in VMState."
+  ],
+  "risks": [
+    "Timing precision: rounding up deadlines may cause slight delays but ensures no early interrupts.",
+    "Interrupt clearing semantics: rc_w0 might be misinterpreted; driver writes ~pending, so writing 0 clears observed flags; we must implement that.",
+    "Preload transfer timing: PSC and ARR buffering must be carefully implemented to match hardware.",
+    "Compare match scheduling: multiple compare channels and overflow need to be scheduled correctly; earliest event should trigger.",
+    "Counter wrap and CNT writes: writing CNT while timer running must reschedule correctly.",
+    "Migration: must save/restore timer state and active preloads to avoid stale host time.",
+    "Unsupported accesses: logging guest errors may require QEMU guest_error APIs; ensure safe handling.",
+    "qtest timing: virtual time advancement must be precise; tests must account for rounding.",
+    "Scope limitations: input capture and PWM are not modeled; tests should not rely on them."
+  ]
+}

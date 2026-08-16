@@ -1,0 +1,157 @@
+{
+  "peripheral": "TIM2",
+  "base_address": "0x40000000",
+  "irq": 28,
+  "clock_hz": 72000000,
+  "registers": [
+    {
+      "name": "CR1",
+      "offset": "0x00",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "Control register 1. Bits: CEN(0), UDIS(1), URS(2), OPM(3), ARPE(7)."
+    },
+    {
+      "name": "CR2",
+      "offset": "0x04",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "Control register 2. Stored only."
+    },
+    {
+      "name": "SMCR",
+      "offset": "0x08",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "Slave mode control register. Stored only."
+    },
+    {
+      "name": "DIER",
+      "offset": "0x0c",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "DMA/Interrupt enable register. Bits: UIE(0), CC1IE(1), CC2IE(2), CC3IE(3), CC4IE(4)."
+    },
+    {
+      "name": "SR",
+      "offset": "0x10",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "Status register. Bits: UIF(0), CC1IF(1), CC2IF(2), CC3IF(3), CC4IF(4). Flags are rc_w0."
+    },
+    {
+      "name": "EGR",
+      "offset": "0x14",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "Event generation register. Write-only. Bits: UG(0), CC1G(1), CC2G(2), CC3G(3), CC4G(4)."
+    },
+    {
+      "name": "CCMR1",
+      "offset": "0x18",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "Capture/compare mode register 1. Bits: CC1S(1:0), CC2S(9:8). Zero means output."
+    },
+    {
+      "name": "CCMR2",
+      "offset": "0x1c",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "Capture/compare mode register 2. Same layout for channels 3 and 4."
+    },
+    {
+      "name": "CCER",
+      "offset": "0x20",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "Capture/compare enable register. Stored only."
+    },
+    {
+      "name": "CNT",
+      "offset": "0x24",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "Current counter value."
+    },
+    {
+      "name": "PSC",
+      "offset": "0x28",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "Prescaler preload. Divide by PSC + 1."
+    },
+    {
+      "name": "ARR",
+      "offset": "0x2c",
+      "reset": "0xffff",
+      "size": 16,
+      "description": "Auto-reload preload."
+    },
+    {
+      "name": "CCR1",
+      "offset": "0x34",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "Capture/compare register 1."
+    },
+    {
+      "name": "CCR2",
+      "offset": "0x38",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "Capture/compare register 2."
+    },
+    {
+      "name": "CCR3",
+      "offset": "0x3c",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "Capture/compare register 3."
+    },
+    {
+      "name": "CCR4",
+      "offset": "0x40",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "Capture/compare register 4."
+    },
+    {
+      "name": "DCR",
+      "offset": "0x48",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "DMA control register. Stored only."
+    },
+    {
+      "name": "DMAR",
+      "offset": "0x4c",
+      "reset": "0x0000",
+      "size": 16,
+      "description": "DMA address for burst mode. Stored only."
+    }
+  ],
+  "behaviors": [
+    "16-bit upcounter increments at timer clock divided by (PSC_active + 1).",
+    "Counter runs only when CEN is set; pauses when CEN is cleared.",
+    "Overflow occurs after (ARR_active + 1) ticks; counter resets to zero and sets UIF unless UDIS is set.",
+    "Update event transfers PSC and ARR preloads to active values, unless UDIS is set.",
+    "UG write resets CNT to zero and generates update event; URS suppresses UIF but not preload transfer.",
+    "OPM clears CEN after the next update event.",
+    "Output compare match on an output-configured channel sets corresponding CCxIF flag.",
+    "CCxG write sets corresponding CCxIF flag.",
+    "Interrupt output is level-sensitive and asserted when any enabled flag is set; clearing flags lowers it.",
+    "Virtual timer deadlines are computed with muldiv64 to avoid early firing.",
+    "Unsupported accesses are logged via qemu_log_mask(GUEST_ERROR)."
+  ],
+  "limitations": [
+    "Input capture, PWM output, slave/external clock modes, DMA, down/center-aligned counting, and RCC clock gating are not modeled.",
+    "Only TIM2 is implemented; other timers are out of scope.",
+    "Clock frequency is fixed at 72 MHz; no RCC clock tree or APB multiplier.",
+    "Registers are 16-bit in effect; 32-bit accesses are handled as two 16-bit halves.",
+    "CCMR1/CCMR2 channel mode bits are stored but not used to alter behavior; channels are assumed output-configured.",
+    "CCER is stored but not used to enable/disable channels.",
+    "DCR and DMAR are stored only; no DMA functionality.",
+    "The generated C and qtest code have not yet been compiled or run."
+  ]
+}
