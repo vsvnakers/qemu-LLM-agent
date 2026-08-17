@@ -7,7 +7,7 @@
   "strategy": "staged",
   "api_base": "https://api.deepseek.com",
   "plan_api": {
-    "reused_from": "/mnt/d/qemu/project/agent-STM32F103-qemu/qemu-LLM-agent/runs/stm32f103-tim2/deepseek-v4-flash/plan.json"
+    "reused_from": "runs/stm32f103-tim2/deepseek-v4-flash/plan.json"
   },
   "attempts": [
     {

@@ -34,7 +34,7 @@
 要求 Python 3.10+。代码只使用标准库，不需要 `pip install`。
 
 ```bash
-cd /mnt/d/qemu/project/agent-STM32F103-qemu/qemu-LLM-agent
+cd qemu-LLM-agent
 export DEEPSEEK_API_KEY='your-key-here'
 
 python3 agent.py tasks/stm32f103-tim2 \
@@ -47,7 +47,7 @@ python3 agent.py tasks/stm32f103-tim2 \
 
 ```bash
 python3 benchmark.py results/stm32f103-tim2/raw-agent \
-  --output /tmp/raw-benchmark.md
+  --output raw-benchmark.md
 ```
 
 运行 Agent 自身测试：
@@ -82,4 +82,3 @@ QTEST_QEMU_BINARY="$(pwd)/build-stm32/qemu-system-arm" \
 - 任务输入是 RM0008 的精简转述。完整硬件事实以
   [ST RM0008](https://www.st.com/resource/en/reference_manual/cd00171190-stm32f101-103-105-107-stm32f100-series-armbased-32bit-mcus-stmicroelectronics.pdf)
   为准。
-

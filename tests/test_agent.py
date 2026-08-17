@@ -26,6 +26,13 @@ class AgentSafetyTests(unittest.TestCase):
             self.assertEqual(first, second)
             self.assertLess(first[0].find("a.txt"), first[0].find("b.md"))
 
+    def test_recorded_paths_are_portable(self):
+        root = Path.cwd()
+        self.assertEqual(agent.portable_path(root / "runs/plan.json", root),
+                         "runs/plan.json")
+        self.assertEqual(agent.portable_path(root.parent / "elsewhere/plan.json", root),
+                         "plan.json")
+
     def test_rubric_must_total_100(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -41,4 +48,3 @@ class AgentSafetyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

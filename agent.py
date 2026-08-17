@@ -30,6 +30,13 @@ REQUIRED_OUTPUTS = {
 }
 
 
+def portable_path(path: Path, base: Path) -> str:
+    try:
+        return path.resolve().relative_to(base.resolve()).as_posix()
+    except ValueError:
+        return path.name
+
+
 def collect_inputs(task_dir: Path) -> tuple[str, str]:
     chunks = []
     digest = hashlib.sha256()
@@ -323,7 +330,7 @@ TASK INPUTS:
     if args.plan:
         supplied_plan = args.plan.resolve()
         plan = json.loads(supplied_plan.read_text(encoding="utf-8"))
-        plan_meta = {"reused_from": str(supplied_plan)}
+        plan_meta = {"reused_from": portable_path(supplied_plan, Path.cwd())}
     elif args.resume and plan_path.is_file():
         plan = json.loads(plan_path.read_text(encoding="utf-8"))
         plan_meta = {"reused": True}
